@@ -10,10 +10,6 @@ module.exports = {
 const cp = require('child_process')
 const quote = require('shell-quote').quote
 const zeroFill = require('zero-fill')
-const Winreg = require('winreg')
-
-// Windows registry key for interface MAC. Checked on Windows 7
-const WIN_REGISTRY_PATH = '\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}'
 
 // Regex to validate a MAC address
 // Example: 00-00-00-00-00-00 or 00:00:00:00:00:00 or 000000000000
@@ -273,12 +269,14 @@ function setInterfaceMAC (device, mac, port) {
     let macChangeError = null
 
     if (isWirelessPort) {
-      // On modern macOS, Wi-Fi MAC can only be changed in the brief window
-      // after power-on but before connecting to an access point
+      // On modern macOS (Sequoia 15.4+, Tahoe 26+), WiFi MAC changes require
+      // a specific sequence to avoid the interface auto-joining networks
       try {
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'off']))
+        cp.execFileSync('ifconfig', [device, 'down'])
+        cp.execFileSync('ifconfig', [device, 'ether', mac])
+        cp.execFileSync('ifconfig', [device, 'up'])
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'on']))
-        cp.execSync('ifconfig ' + device + ' ether ' + mac)
       } catch (err) {
         macChangeError = err
       }
@@ -289,22 +287,23 @@ function setInterfaceMAC (device, mac, port) {
         // Ignore
       }
     } else {
+      // Non-WiFi interfaces: standard down/change/up sequence
       try {
-        cp.execSync(quote(['ifconfig', device, 'down']))
+        cp.execFileSync('ifconfig', [device, 'down'])
       } catch (err) {
         macChangeError = new Error('Unable to bring interface down: ' + err.message)
       }
 
       if (!macChangeError) {
         try {
-          cp.execSync('ifconfig ' + device + ' ether ' + mac)
+          cp.execFileSync('ifconfig', [device, 'ether', mac])
         } catch (err) {
           macChangeError = err
         }
       }
 
       try {
-        cp.execSync(quote(['ifconfig', device, 'up']))
+        cp.execFileSync('ifconfig', [device, 'up'])
       } catch (err) {
         if (!macChangeError) {
           macChangeError = new Error('Unable to bring interface up: ' + err.message)
@@ -316,80 +315,10 @@ function setInterfaceMAC (device, mac, port) {
       throw new Error('Unable to change MAC address: ' + macChangeError.message)
     }
   } else if (process.platform === 'linux') {
-    // Set the device's mac address.
-    // Handles shutting down and starting back up interface.
-    try {
-      cp.execSync(quote(['ifconfig', device, 'down', 'hw', 'ether', mac]))
-      cp.execSync(quote(['ifconfig', device, 'up']))
-    } catch (err) {
-      throw new Error('Unable to change MAC address')
-    }
+    throw new Error('Modern Linux support coming soon! This fork currently only supports macOS. See https://github.com/basedbytes/spoofy for updates.')
   } else if (process.platform === 'win32') {
-    // Locate adapter's registry and update network address (mac)
-    const regKey = new Winreg({
-      hive: Winreg.HKLM,
-      key: WIN_REGISTRY_PATH
-    })
-
-    regKey.keys((err, keys) => {
-      if (err) {
-        console.log('ERROR: ' + err)
-      } else {
-        // Loop over all available keys and find the right adapter
-        for (let i = 0; i < keys.length; i++) {
-          tryWindowsKey(keys[i].key, device, mac)
-        }
-      }
-    })
+    throw new Error('Modern Windows support coming soon! This fork currently only supports macOS. See https://github.com/basedbytes/spoofy for updates.')
   }
-}
-
-/**
- * Tries to set the "NetworkAddress" value on the specified registry key for given
- * `device` to `mac`.
- *
- * @param {string} key
- * @param {string} device
- * @param {string} mac
- */
-function tryWindowsKey (key, device, mac) {
-  // Skip the Properties key to avoid problems with permissions
-  if (key.indexOf('Properties') > -1) {
-    return false
-  }
-
-  const networkAdapterKeyPath = new Winreg({
-    hive: Winreg.HKLM,
-    key: key
-  })
-
-  // we need to format the MAC a bit for Windows
-  mac = mac.replace(/:/g, '')
-
-  networkAdapterKeyPath.values((err, values) => {
-    let gotAdapter = false
-    if (err) {
-      console.log('ERROR: ' + err)
-    } else {
-      for (let x = 0; x < values.length; x++) {
-        if (values[x].name === 'AdapterModel') {
-          gotAdapter = true
-          break
-        }
-      }
-
-      if (gotAdapter) {
-        networkAdapterKeyPath.set('NetworkAddress', 'REG_SZ', mac, () => {
-          try {
-            cp.execSync('netsh interface set interface "' + device + '" disable')
-            cp.execSync('netsh interface set interface "' + device + '" enable')
-          } catch (err) {
-            throw new Error('Unable to restart device, is the cmd running as admin?')
-          }
-        })
-      }
-    }
-  })
 }
 
 /**
@@ -424,7 +353,8 @@ function randomize (localAdmin) {
   const vendor = vendors[random(0, vendors.length - 1)]
 
   if (process.platform === 'win32') {
-    vendor[0] = windowsPrefixes[random(0, 3)]
+    // Parse hex string to number (fix for Windows randomize bug)
+    vendor[0] = parseInt(windowsPrefixes[random(0, 3)], 16)
   }
 
   const mac = [

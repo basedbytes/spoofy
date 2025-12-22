@@ -1,63 +1,45 @@
 {
-  "name": "spoof",
-  "description": "Easily spoof your MAC address in OS X & Linux",
+  "name": "spoofy",
+  "description": "Easily spoof your MAC address on modern macOS",
   "version": "2.0.4",
-  "author": {
-    "name": "Feross Aboukhadijeh",
-    "email": "feross@feross.org",
-    "url": "https://feross.org"
-  },
   "bin": "./bin/cmd.js",
   "bugs": {
-    "url": "https://github.com/feross/spoof/issues"
+    "url": "https://github.com/basedbytes/spoofy/issues"
   },
   "dependencies": {
     "chalk": "^4.1.0",
     "common-tags": "^1.8.0",
     "minimist": "^1.2.5",
     "shell-quote": "^1.7.2",
-    "winreg": "^1.2.4",
     "zero-fill": "^2.2.4"
   },
   "devDependencies": {
     "standard": "*",
     "tape": "^5.0.1"
   },
-  "homepage": "http://feross.org/spoofmac/",
+  "homepage": "https://github.com/basedbytes/spoofy",
   "keywords": [
     "MAC address",
     "address",
     "change",
     "mac",
     "macchanger",
-    "mad science",
     "modify",
     "set mac",
     "spoof",
     "spoof mac address",
-    "spoofmac"
+    "spoofmac",
+    "macos",
+    "sequoia",
+    "tahoe"
   ],
   "license": "MIT",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/feross/spoof.git"
+    "url": "git://github.com/basedbytes/spoofy.git"
   },
   "scripts": {
     "test": "standard && tape test/*.js"
-  },
-  "funding": [
-    {
-      "type": "github",
-      "url": "https://github.com/sponsors/feross"
-    },
-    {
-      "type": "patreon",
-      "url": "https://www.patreon.com/feross"
-    },
-    {
-      "type": "consulting",
-      "url": "https://feross.org/support"
-    }
-  ]
+  }
 }

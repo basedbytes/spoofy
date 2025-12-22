@@ -122,16 +122,24 @@ sudo spoof reset wi-fi
 
 ## Platform Support
 
-### macOS
-- ✅ Tested on macOS Tahoe 26.2
+### macOS ✅
+- ✅ **Fully supported** and tested on macOS Tahoe 26.2
 - ✅ Works on macOS Sequoia 15.4+
 - ⚠️ Older versions may work but are untested
 
-### Linux
-Linux support requires the `ifconfig` utility, which comes pre-installed with most distributions.
+### Linux 🚧
+**Coming soon!** Linux support is planned but not yet implemented in this fork.
 
-### Windows
-Windows support is included but may be less thoroughly tested on modern versions.
+Running MAC change commands on Linux will display a "coming soon" message. You can still use `spoof list` to view network interfaces.
+
+The upcoming Linux implementation will use modern `ip link` commands instead of the deprecated `ifconfig` tool.
+
+### Windows 🚧
+**Coming soon!** Windows support is planned but not yet implemented in this fork.
+
+Running MAC change commands on Windows will display a "coming soon" message. You can still use `spoof list` to view network interfaces.
+
+The upcoming Windows implementation will use PowerShell for more reliable adapter management.
 
 ## Known Issues
 
