@@ -269,14 +269,14 @@ function setInterfaceMAC (device, mac, port) {
     let macChangeError = null
 
     if (isWirelessPort) {
-      // On modern macOS (Sequoia 15.4+, Tahoe 26+), WiFi MAC changes require
-      // a specific sequence to avoid the interface auto-joining networks
+      // On modern macOS (Sequoia 15.4+, Tahoe 26+), WiFi MAC can only be changed
+      // in the brief window after WiFi is powered on but before it connects to a network.
+      // We must NOT use ifconfig down as it causes "Network is down" errors.
       try {
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'off']))
-        cp.execFileSync('ifconfig', [device, 'down'])
-        cp.execFileSync('ifconfig', [device, 'ether', mac])
-        cp.execFileSync('ifconfig', [device, 'up'])
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'on']))
+        // Change MAC immediately in the window before auto-join
+        cp.execFileSync('ifconfig', [device, 'ether', mac])
       } catch (err) {
         macChangeError = err
       }
