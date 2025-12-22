@@ -152,7 +152,7 @@ The upcoming Windows implementation will use PowerShell for more reliable adapte
 
 - WiFi will briefly disconnect when changing MAC address
 - Some network restrictions or hardware may prevent MAC spoofing
-- System Integrity Protection (SIP) must be enabled for this to work
+- Requires sudo/root privileges for all MAC address changes
 
 ## Troubleshooting
 
