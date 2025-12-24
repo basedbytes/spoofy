@@ -71,6 +71,14 @@ function version() {
 }
 
 function set(mac, devices) {
+  if (!mac) {
+    throw new Error("MAC address is required");
+  }
+
+  if (!devices || devices.length === 0) {
+    throw new Error("At least one device is required");
+  }
+
   devices.forEach((device) => {
     const it = spoof.findInterface(device);
 
@@ -87,6 +95,10 @@ function normalize(mac) {
 }
 
 function randomize(devices) {
+  if (!devices || devices.length === 0) {
+    throw new Error("At least one device is required");
+  }
+
   devices.forEach((device) => {
     const it = spoof.findInterface(device);
 
@@ -100,6 +112,10 @@ function randomize(devices) {
 }
 
 function reset(devices) {
+  if (!devices || devices.length === 0) {
+    throw new Error("At least one device is required");
+  }
+
   devices.forEach((device) => {
     const it = spoof.findInterface(device);
 
