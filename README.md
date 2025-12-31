@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/spoofy)](https://www.npmjs.com/package/spoofy)
 [![license](https://img.shields.io/npm/l/spoofy)](LICENSE)
 
-> **⚠️ Work in Progress**: This is a modernized fork of the original `spoof` project, updated for compatibility with modern macOS (Sequoia 15.4+, Tahoe 26+). **Currently only macOS is fully supported.** Modern Windows and Linux support is planned but not yet implemented.
+> A modernized fork of the original `spoof` project, updated for compatibility with modern macOS (Sequoia 15.4+, Tahoe 26+). **Currently only macOS is fully supported.** Modern Windows and Linux support is planned but not yet implemented.
 
 ### Easily spoof your MAC address and DUID on macOS!
 
