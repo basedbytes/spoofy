@@ -1,32 +1,47 @@
 /*! spoof. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
+const cp = require("child_process");
+const quote = require("shell-quote").quote;
+const zeroFill = require("zero-fill");
+const duid = require("./lib/duid");
+
 module.exports = {
   findInterface,
   findInterfaces,
   normalize,
   randomize,
   setInterfaceMAC,
+
+  // DUID functionality
+  duid: {
+    DUID_TYPES: duid.DUID_TYPES,
+    generateDUID: duid.generateDUID,
+    getCurrentDUID: duid.getCurrentDUID,
+    getCurrentMACAddress: duid.getCurrentMACAddress,
+    setDUID: duid.setDUID,
+    randomizeDUID: duid.randomizeDUID,
+    restoreDUID: duid.restoreDUID,
+    resetDUID: duid.resetDUID,
+    syncDUID: duid.syncDUID,
+    parseDUID: duid.parseDUID,
+    formatDUID: duid.formatDUID,
+    duidToHex: duid.duidToHex,
+    hexToDuid: duid.hexToDuid,
+    generateRandomMAC: duid.generateRandomMAC,
+    hasOriginalDUID: duid.hasOriginalDUID,
+    getOriginalDUID: duid.getOriginalDUID,
+    getOriginalDUIDPath: duid.getOriginalDUIDPath,
+    clearOriginalDUID: duid.clearOriginalDUID,
+  },
 };
 
-const cp = require("child_process");
-const quote = require("shell-quote").quote;
-const zeroFill = require("zero-fill");
-
-// Regex to validate a MAC address
-// Example: 00-00-00-00-00-00 or 00:00:00:00:00:00 or 000000000000
+// MAC address regex: 00:00:00:00:00:00, 00-00-00-00-00-00, or 000000000000
 const MAC_ADDRESS_RE =
   /([0-9A-F]{1,2})[:-]?([0-9A-F]{1,2})[:-]?([0-9A-F]{1,2})[:-]?([0-9A-F]{1,2})[:-]?([0-9A-F]{1,2})[:-]?([0-9A-F]{1,2})/i;
 
-// Regex to validate a MAC address in cisco-style
-// Example: 0123.4567.89ab
+// Cisco format: 0123.4567.89ab
 const CISCO_MAC_ADDRESS_RE =
   /([0-9A-F]{0,4})\.([0-9A-F]{0,4})\.([0-9A-F]{0,4})/i;
 
-/**
- * Returns the list of interfaces found on this machine as reported by the
- * `networksetup` command.
- * @param {Array.<string>|null} targets
- * @return {Array.<Object>}
- */
 function findInterfaces(targets) {
   if (!targets) targets = [];
 
@@ -42,12 +57,7 @@ function findInterfaces(targets) {
 }
 
 function findInterfacesDarwin(targets) {
-  // Parse the output of `networksetup -listallhardwareports` which gives
-  // us 3 fields per port:
-  // - the port name,
-  // - the device associated with this port, if any,
-  // - the MAC address, if any, otherwise 'N/A'
-
+  // Parse networksetup output: port name, device, MAC address
   let output = cp.execSync("networksetup -listallhardwareports").toString();
 
   const details = [];
@@ -62,10 +72,9 @@ function findInterfacesDarwin(targets) {
     output = output.slice(result.index + result[1].length);
   }
 
-  const interfaces = []; // to return
+  const interfaces = [];
 
-  // Split the results into chunks of 3 (for our three fields) and yield
-  // those that match `targets`.
+  // Process in chunks of 3 (port, device, MAC)
   for (let i = 0; i < details.length; i += 3) {
     const port = details[i];
     const device = details[i + 1];
@@ -84,7 +93,6 @@ function findInterfacesDarwin(targets) {
     };
 
     if (targets.length === 0) {
-      // Not trying to match anything in particular, return everything.
       interfaces.push(it);
       continue;
     }
@@ -102,11 +110,6 @@ function findInterfacesDarwin(targets) {
 }
 
 function findInterfacesLinux(targets) {
-  // Parse the output of `ifconfig` which gives us:
-  // - the adapter description
-  // - the adapter name/device associated with this, if any,
-  // - the MAC address, if any
-
   let output = cp.execSync("ifconfig", { stdio: "pipe" }).toString();
 
   const details = [];
@@ -143,7 +146,6 @@ function findInterfacesLinux(targets) {
     };
 
     if (targets.length === 0) {
-      // Not trying to match anything in particular, return everything.
       interfaces.push(it);
       continue;
     }
@@ -167,12 +169,10 @@ function findInterfacesWin32(targets) {
   const lines = output.split("\n");
   let it = false;
   for (let i = 0; i < lines.length; i++) {
-    // Check if new device
     let result;
     if (lines[i].substr(0, 1).match(/[A-Z]/)) {
       if (it) {
         if (targets.length === 0) {
-          // Not trying to match anything in particular, return everything.
           interfaces.push(it);
         } else {
           for (let j = 0; j < targets.length; j++) {
@@ -204,16 +204,12 @@ function findInterfacesWin32(targets) {
     if (!it) {
       continue;
     }
-
-    // Try to find address
     result = /Physical Address.+?:(.*)/im.exec(lines[i]);
     if (result) {
       it.address = normalize(result[1].trim());
       it.currentAddress = it.address;
       continue;
     }
-
-    // Try to find description
     result = /description.+?:(.*)/im.exec(lines[i]);
     if (result) {
       it.description = result[1].trim();
@@ -223,21 +219,11 @@ function findInterfacesWin32(targets) {
   return interfaces;
 }
 
-/**
- * Returns the first interface which matches `target`
- * @param  {string} target
- * @return {Object}
- */
 function findInterface(target) {
   const interfaces = findInterfaces([target]);
   return interfaces && interfaces[0];
 }
 
-/**
- * Returns currently-set MAC address of given interface. This is distinct from the
- * interface's hardware MAC address.
- * @return {string}
- */
 function getInterfaceMAC(device) {
   if (process.platform === "darwin" || process.platform === "linux") {
     let output;
@@ -256,17 +242,6 @@ function getInterfaceMAC(device) {
   }
 }
 
-/**
- * Sets the mac address for given `device` to `mac`.
- *
- * Device varies by platform:
- *   OS X, Linux: this is the interface name in ifconfig
- *   Windows: this is the network adapter name in ipconfig
- *
- * @param {string} device
- * @param {string} mac
- * @param {string=} port
- */
 function setInterfaceMAC(device, mac, port) {
   if (!MAC_ADDRESS_RE.exec(mac)) {
     throw new Error(mac + " is not a valid MAC address");
@@ -278,13 +253,11 @@ function setInterfaceMAC(device, mac, port) {
     let macChangeError = null;
 
     if (isWirelessPort) {
-      // On modern macOS (Sequoia 15.4+, Tahoe 26+), WiFi MAC can only be changed
-      // in the brief window after WiFi is powered on but before it connects to a network.
-      // We must NOT use ifconfig down as it causes "Network is down" errors.
+      // WiFi MAC change requires timing: power off → on → change before auto-join
+      // (macOS Sequoia 15.4+, Tahoe 26+)
       try {
         cp.execSync(quote(["networksetup", "-setairportpower", device, "off"]));
         cp.execSync(quote(["networksetup", "-setairportpower", device, "on"]));
-        // Change MAC immediately in the window before auto-join
         cp.execFileSync("ifconfig", [device, "ether", mac]);
       } catch (err) {
         macChangeError = err;
@@ -292,11 +265,8 @@ function setInterfaceMAC(device, mac, port) {
 
       try {
         cp.execSync(quote(["networksetup", "-detectnewhardware"]));
-      } catch (err) {
-        // Ignore
-      }
+      } catch (err) {}
     } else {
-      // Non-WiFi interfaces: standard down/change/up sequence
       try {
         cp.execFileSync("ifconfig", [device, "down"]);
       } catch (err) {
@@ -340,15 +310,8 @@ function setInterfaceMAC(device, mac, port) {
   }
 }
 
-/**
- * Generates and returns a random MAC address.
- * @param  {boolean} localAdmin  locally administered address
- * @return {string}
- */
 function randomize(localAdmin) {
-  // Randomly assign a VM vendor's MAC address prefix, which should
-  // decrease chance of colliding with existing device's addresses.
-
+  // Use VM vendor prefixes to avoid collisions
   const vendors = [
     [0x00, 0x05, 0x69], // VMware
     [0x00, 0x50, 0x56], // VMware
@@ -360,14 +323,10 @@ function randomize(localAdmin) {
     [0x08, 0x00, 0x27], // Sun Virtual Box
   ];
 
-  // Windows needs specific prefixes sometimes
-  // http://www.wikihow.com/Change-a-Computer's-Mac-Address-in-Windows
   const windowsPrefixes = ["D2", "D6", "DA", "DE"];
-
   const vendor = vendors[random(0, vendors.length - 1)];
 
   if (process.platform === "win32") {
-    // Parse hex string to number (fix for Windows randomize bug)
     vendor[0] = parseInt(windowsPrefixes[random(0, 3)], 16);
   }
 
@@ -381,15 +340,7 @@ function randomize(localAdmin) {
   ];
 
   if (localAdmin) {
-    // Universally administered and locally administered addresses are
-    // distinguished by setting the second least significant bit of the
-    // most significant byte of the address. If the bit is 0, the address
-    // is universally administered. If it is 1, the address is locally
-    // administered. In the example address 02-00-00-00-00-01 the most
-    // significant byte is 02h. The binary is 00000010 and the second
-    // least significant bit is 1. Therefore, it is a locally administered
-    // address.[3] The bit is 0 in all OUIs.
-    mac[0] |= 2;
+    mac[0] |= 2; // Set locally administered bit
   }
 
   return mac
@@ -398,18 +349,7 @@ function randomize(localAdmin) {
     .toUpperCase();
 }
 
-/**
- * Takes a MAC address in various formats:
- *
- *      - 00:00:00:00:00:00,
- *      - 00-00-00-00-00-00,
- *      - 0000.0000.0000
- *
- *  ... and returns it in the format 00:00:00:00:00:00.
- *
- * @param  {string} mac
- * @return {string}
- */
+// Normalize MAC address to 00:00:00:00:00:00 format
 function normalize(mac) {
   let m = CISCO_MAC_ADDRESS_RE.exec(mac);
   if (m) {
@@ -440,12 +380,6 @@ function chunk(str, n) {
   return arr;
 }
 
-/**
- * Return a random integer between min and max (inclusive).
- * @param  {number} min
- * @param  {number} max
- * @return {number}
- */
 function random(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }

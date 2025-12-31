@@ -4,6 +4,7 @@ const chalk = require("chalk");
 const minimist = require("minimist");
 const spoof = require("../");
 const { stripIndent } = require("common-tags");
+const duidCli = require("../lib/duid-cli");
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -38,6 +39,8 @@ function init() {
   } else if (cmd === "normalize") {
     const mac = argv._[1];
     normalize(mac);
+  } else if (cmd === "duid") {
+    duidCli.run(argv._.slice(1));
   } else {
     help();
   }
@@ -45,17 +48,28 @@ function init() {
 
 function help() {
   const message = stripIndent`
-    spoofy - Spoof your MAC address
+    spoofy - MAC address and DUID spoofing utility
 
     Example (randomize MAC address on macOS):
       spoofy randomize en0
 
-    Usage:
+    MAC Address Commands:
       spoofy list [--wifi]                     List available devices.
       spoofy set <mac> <devices>...            Set device MAC address.
       spoofy randomize [--local] <devices>...  Set device MAC address randomly.
       spoofy reset <devices>...                Reset device MAC address to default.
       spoofy normalize <mac>                   Given a MAC address, normalize it.
+
+    DUID (DHCPv6) Commands:
+      spoofy duid list                         Show current DUID.
+      spoofy duid randomize [iface]            Randomize DUID.
+      spoofy duid set <hex> [iface]            Set specific DUID.
+      spoofy duid sync <iface>                 Sync DUID to current MAC address.
+      spoofy duid restore [iface]              Restore to original DUID.
+      spoofy duid reset [iface]                Reset DUID (system generates new).
+      spoofy duid help                         Show detailed DUID help.
+
+    General:
       spoofy help                              Shows this help message.
       spoofy version | --version | -v          Show package version.
 

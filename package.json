@@ -1,11 +1,12 @@
 {
   "name": "spoofy",
-  "description": "Cross-platform MAC address spoofing utility (work in progress)",
+  "description": "Cross-platform MAC address and DUID spoofing utility (work in progress)",
   "version": "0.0.3",
   "bin": "./bin/cmd.js",
   "files": [
     "index.js",
     "bin/",
+    "lib/",
     "LICENSE",
     "README.md"
   ],
@@ -34,6 +35,10 @@
     "spoof",
     "spoof mac address",
     "spoofmac",
+    "duid",
+    "dhcpv6",
+    "ipv6",
+    "network",
     "macos",
     "sequoia",
     "tahoe"
